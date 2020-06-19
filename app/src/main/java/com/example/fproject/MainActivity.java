@@ -20,9 +20,12 @@ import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.speech.tts.TextToSpeech;
+import android.util.Log;
 import android.util.SparseArray;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -38,9 +41,11 @@ import com.theartofdev.edmodo.cropper.CropImageView;
 
 import org.w3c.dom.Text;
 
+import java.util.Locale;
+
 public class MainActivity extends AppCompatActivity {
 
-    EditText mResultEt;
+    TextView mResultEt;
     ImageView mPreviewIv;
     private static final int CAMERA_REQUEST_CODE = 200;
     private static final int STORAGE_REQUEST_CODE = 400;
@@ -49,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
     String[] cameraPermission;
     String[] storagePermission;
     Uri image_uri;
+    private TextToSpeech textToSpeech;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -65,6 +71,41 @@ public class MainActivity extends AppCompatActivity {
         cameraPermission = new String[]{Manifest.permission.CAMERA,Manifest.permission.WRITE_EXTERNAL_STORAGE};
         // storage permission
         storagePermission = new  String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE};
+
+        textToSpeech = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int status) {
+                if (status == TextToSpeech.SUCCESS) {
+                    int ttsLang = textToSpeech.setLanguage(Locale.US);
+
+                    if (ttsLang == TextToSpeech.LANG_MISSING_DATA
+                            || ttsLang == TextToSpeech.LANG_NOT_SUPPORTED) {
+                        Log.e("TTS", "The Language is not supported!");
+                    } else {
+                        Log.i("TTS", "Language Supported.");
+                    }
+                    Log.i("TTS", "Initialization success.");
+                } else {
+                    Toast.makeText(getApplicationContext(), "TTS Initialization failed!", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+        findViewById(R.id.btn_speak).setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View arg0) {
+
+                String data = mResultEt.getText().toString();
+                Log.i("TTS", "button clicked: " + data);
+                int speechStatus = textToSpeech.speak(data, TextToSpeech.QUEUE_FLUSH, null);
+
+                if (speechStatus == TextToSpeech.ERROR) {
+                    Log.e("TTS", "Error in converting Text to Speech!");
+                }
+            }
+
+        });
     }
 
     // actionbar menu..
@@ -284,6 +325,15 @@ public class MainActivity extends AppCompatActivity {
                 Exception error = result.getError();
                 Toast.makeText(this, "+error", Toast.LENGTH_LONG).show();
             }
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (textToSpeech != null) {
+            textToSpeech.stop();
+            textToSpeech.shutdown();
         }
     }
 }
